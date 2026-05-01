@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="주식평가">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>Global Stock Evaluator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif; background: #f5f5f7; color: #1d1d1f; min-height: 100vh; }
+
+    .status-bar-spacer { height: env(safe-area-inset-top, 44px); background: #fff; }
+    .header { background: #fff; border-bottom: 0.5px solid #d2d2d7; padding: 12px 16px 12px; position: sticky; top: env(safe-area-inset-top, 0); z-index: 100; }
+    .header h1 { font-size: 17px; font-weight: 600; text-align: center; color: #1d1d1f; }
+    .header p { font-size: 11px; color: #86868b; text-align: center; margin-top: 2px; }
+
+    .tab-bar { display: flex; background: #fff; border-bottom: 0.5px solid #d2d2d7; }
+    .tab { flex: 1; padding: 10px 4px; font-size: 12px; text-align: center; color: #86868b; cursor: pointer; border: none; background: none; }
+    .tab.active { color: #007aff; font-weight: 600; border-bottom: 2px solid #007aff; }
+
+    .content { padding: 0 0 80px; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .filter-scroll { display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; background: #fff; border-bottom: 0.5px solid #d2d2d7; }
+    .filter-scroll::-webkit-scrollbar { display: none; }
+    .filter-btn { white-space: nowrap; font-size: 13px; padding: 6px 14px; border-radius: 20px; border: 1px solid #d2d2d7; background: #fff; color: #3a3a3c; cursor: pointer; flex-shrink: 0; }
+    .filter-btn.active { background: #007aff; color: #fff; border-color: #007aff; }
+
+    .stock-list { background: #fff; margin: 12px 16px; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .stock-item { display: flex; align-items: center; padding: 14px 16px; border-bottom: 0.5px solid #f0f0f0; cursor: pointer; transition: background 0.1s; }
+    .stock-item:last-child { border-bottom: none; }
+    .stock-item:active { background: #f5f5f7; }
+
+    .rank { font-size: 12px; color: #86868b; width: 20px; flex-shrink: 0; }
+    .stock-info { flex: 1; margin-left: 10px; }
+    .ticker { font-size: 15px; font-weight: 600; color: #1d1d1f; }
+    .sname { font-size: 12px; color: #86868b; margin-top: 1px; }
+    .stock-right { text-align: right; }
+    .price { font-size: 14px; font-weight: 500; }
+    .change { font-size: 12px; margin-top: 2px; }
+    .pos { color: #30d158; }
+    .neg { color: #ff3b30; }
+
+    .score-pill { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 20px; margin-left: 10px; flex-shrink: 0; }
+    .s-high { background: #d1f5d3; color: #1a7f2a; }
+    .s-mid  { background: #fff3cd; color: #7d5a00; }
+    .s-low  { background: #ffd6d6; color: #c00; }
+
+    .score-track { height: 3px; background: #e5e5ea; border-radius: 2px; margin-top: 6px; }
+    .score-fill { height: 3px; border-radius: 2px; }
+
+    .detail-card { margin: 12px 16px; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .detail-head { padding: 16px; border-bottom: 0.5px solid #f0f0f0; }
+    .detail-ticker { font-size: 20px; font-weight: 700; }
+    .detail-name { font-size: 13px; color: #86868b; margin-top: 2px; }
+    .detail-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .btn-watch { flex: 1; padding: 10px; font-size: 13px; font-weight: 600; border: 1.5px solid #007aff; border-radius: 10px; background: #fff; color: #007aff; cursor: pointer; }
+    .btn-watch.active { background: #007aff; color: #fff; }
+    .btn-analyze { flex: 1; padding: 10px; font-size: 13px; font-weight: 600; border: none; border-radius: 10px; background: #007aff; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-analyze:disabled { opacity: 0.5; }
+
+    .metrics { display: grid; grid-template-columns: 1fr 1fr; }
+    .metric { padding: 14px 16px; border-bottom: 0.5px solid #f0f0f0; border-right: 0.5px solid #f0f0f0; }
+    .metric:nth-child(2n) { border-right: none; }
+    .metric:nth-last-child(-n+2) { border-bottom: none; }
+    .m-label { font-size: 11px; color: #86868b; }
+    .m-value { font-size: 20px; font-weight: 600; margin-top: 3px; }
+    .m-sub { font-size: 11px; color: #86868b; margin-top: 2px; }
+
+    .analysis-box { padding: 16px; }
+    .analysis-placeholder { text-align: center; color: #86868b; font-size: 13px; padding: 20px 0; }
+    .analysis-content { font-size: 14px; line-height: 1.7; color: #3a3a3c; }
+    .analysis-content h4 { font-size: 14px; font-weight: 600; color: #1d1d1f; margin: 14px 0 6px; }
+    .analysis-content h4:first-child { margin-top: 0; }
+    .analysis-content p, .analysis-content li { font-size: 13px; color: #3a3a3c; margin-bottom: 4px; }
+    .analysis-content ul { padding-left: 18px; }
+
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 16px; border-top: 0.5px solid #f0f0f0; }
+    .tag { font-size: 12px; padding: 4px 10px; border-radius: 20px; background: #f5f5f7; color: #3a3a3c; }
+
+    .search-wrap { padding: 12px 16px; background: #fff; border-bottom: 0.5px solid #d2d2d7; }
+    .search-row { display: flex; gap: 8px; align-items: center; background: #f5f5f7; border-radius: 10px; padding: 8px 12px; }
+    .search-row input { flex: 1; border: none; background: none; font-size: 15px; color: #1d1d1f; outline: none; }
+    .search-row input::placeholder { color: #86868b; }
+    .search-go { font-size: 13px; font-weight: 600; color: #007aff; background: none; border: none; cursor: pointer; white-space: nowrap; }
+
+    .watchlist-wrap { padding: 12px 16px; }
+    .watch-empty { text-align: center; color: #86868b; font-size: 14px; padding: 40px 20px; line-height: 1.6; }
+    .watch-item { background: #fff; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); cursor: pointer; }
+    .watch-item:active { opacity: 0.7; }
+    .w-ticker { font-size: 15px; font-weight: 600; }
+    .w-name { font-size: 12px; color: #86868b; margin-top: 2px; }
+    .w-right { text-align: right; }
+    .remove-btn { font-size: 12px; color: #ff3b30; background: none; border: 1px solid #ff3b30; border-radius: 20px; padding: 4px 10px; margin-top: 6px; cursor: pointer; }
+
+    .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .bottom-safe { height: env(safe-area-inset-bottom, 0px); }
+  </style>
+</head>
+<body>
+<div class="status-bar-spacer"></div>
+<div class="header">
+  <h1>Global Stock Evaluator</h1>
+  <p>AI 기반 해외 주식 평가 · 탑 10</p>
+</div>
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('top10')">탑 10</button>
+  <button class="tab" onclick="switchTab('search')">검색</button>
+  <button class="tab" onclick="switchTab('watchlist')">관심종목</button>
+</div>
+
+<div class="content">
+  <!-- TOP 10 -->
+  <div id="tab-top10" class="section active">
+    <div class="filter-scroll" id="filter-row"></div>
+    <div class="stock-list" id="stock-list"></div>
+    <div id="detail-area"></div>
+  </div>
+
+  <!-- SEARCH -->
+  <div id="tab-search" class="section">
+    <div class="search-wrap">
+      <div class="search-row">
+        <input type="text" id="search-input" placeholder="티커 또는 종목명 (예: NVDA, Apple)">
+        <button class="search-go" onclick="doSearch()">분석</button>
+      </div>
+    </div>
+    <div id="search-result" style="padding:16px;text-align:center;color:#86868b;font-size:13px;padding-top:40px;">종목을 검색하면 AI가 실시간 분석합니다</div>
+  </div>
+
+  <!-- WATCHLIST -->
+  <div id="tab-watchlist" class="section">
+    <div class="watchlist-wrap" id="watchlist-area"></div>
+  </div>
+</div>
+<div class="bottom-safe"></div>
+
+<script>
+const STOCKS = [
+  {rank:1,ticker:'NVDA',name:'NVIDIA Corporation',sector:'ai',score:94,price:'$875.40',change:'+2.3%',pos:true,pe:'68.2',pb:'35.1',roe:'91.2%',cap:'$2.15T',div:'0.03%',beta:'1.72',tags:['AI 반도체','데이터센터','GPU 독점']},
+  {rank:2,ticker:'MSFT',name:'Microsoft Corporation',sector:'tech',score:91,price:'$415.20',change:'+0.8%',pos:true,pe:'34.5',pb:'13.2',roe:'38.6%',cap:'$3.08T',div:'0.71%',beta:'0.89',tags:['클라우드','AI 통합','안정성']},
+  {rank:3,ticker:'META',name:'Meta Platforms Inc.',sector:'tech',score:89,price:'$514.30',change:'+1.5%',pos:true,pe:'26.8',pb:'8.9',roe:'33.1%',cap:'$1.31T',div:'0.35%',beta:'1.21',tags:['소셜미디어','AI광고','메타버스']},
+  {rank:4,ticker:'GOOGL',name:'Alphabet Inc.',sector:'ai',score:87,price:'$170.50',change:'-0.3%',pos:false,pe:'23.1',pb:'6.8',roe:'29.7%',cap:'$2.10T',div:'-',beta:'1.05',tags:['검색광고','클라우드','AI 경쟁']},
+  {rank:5,ticker:'AMZN',name:'Amazon.com Inc.',sector:'tech',score:86,price:'$195.80',change:'+1.1%',pos:true,pe:'43.2',pb:'9.4',roe:'21.8%',cap:'$2.11T',div:'-',beta:'1.15',tags:['이커머스','AWS','광고성장']},
+  {rank:6,ticker:'BRK.B',name:'Berkshire Hathaway',sector:'finance',score:83,price:'$430.20',change:'+0.2%',pos:true,pe:'21.3',pb:'1.6',roe:'7.8%',cap:'$934B',div:'-',beta:'0.62',tags:['가치투자','복합기업','안전자산']},
+  {rank:7,ticker:'LLY',name:'Eli Lilly and Co.',sector:'health',score:82,price:'$732.50',change:'-1.2%',pos:false,pe:'52.4',pb:'38.7',roe:'73.9%',cap:'$695B',div:'0.78%',beta:'0.44',tags:['비만치료제','GLP-1','고성장']},
+  {rank:8,ticker:'TSLA',name:'Tesla Inc.',sector:'tech',score:79,price:'$248.70',change:'+3.4%',pos:true,pe:'71.8',pb:'11.2',roe:'15.6%',cap:'$794B',div:'-',beta:'2.34',tags:['전기차','에너지','자율주행']},
+  {rank:9,ticker:'JPM',name:'JPMorgan Chase',sector:'finance',score:78,price:'$225.30',change:'+0.6%',pos:true,pe:'12.4',pb:'2.1',roe:'17.2%',cap:'$652B',div:'2.31%',beta:'1.08',tags:['대형은행','금리수혜','배당']},
+  {rank:10,ticker:'NEE',name:'NextEra Energy',sector:'energy',score:74,price:'$74.20',change:'-0.5%',pos:false,pe:'20.7',pb:'3.1',roe:'14.9%',cap:'$151B',div:'2.84%',beta:'0.61',tags:['재생에너지','AI전력수요','배당성장']},
+];
+
+const SECTORS = [{id:'all',label:'전체'},{id:'ai',label:'AI'},{id:'tech',label:'테크'},{id:'finance',label:'금융'},{id:'health',label:'헬스케어'},{id:'energy',label:'에너지'}];
+let selected = null, watchlist = [], currentSector = 'all';
+
+function sc(s){return s>=85?'s-high':s>=75?'s-mid':'s-low';}
+function bc(s){return s>=85?'#30d158':s>=75?'#ff9f0a':'#ff3b30';}
+
+function renderFilters(){
+  document.getElementById('filter-row').innerHTML = SECTORS.map(s=>
+    `<button class="filter-btn${s.id===currentSector?' active':''}" onclick="setFilter('${s.id}')">${s.label}</button>`
+  ).join('');
+}
+
+function renderStocks(){
+  const list = currentSector==='all' ? STOCKS : STOCKS.filter(s=>s.sector===currentSector);
+  document.getElementById('stock-list').innerHTML = list.map(s=>`
+    <div class="stock-item" onclick="selectStock('${s.ticker}')">
+      <div class="rank">#${s.rank}</div>
+      <div class="stock-info">
+        <div class="ticker">${s.ticker}</div>
+        <div class="sname">${s.name}</div>
+        <div class="score-track"><div class="score-fill" style="width:${s.score}%;background:${bc(s.score)}"></div></div>
+      </div>
+      <div class="stock-right">
+        <div class="price">${s.price}</div>
+        <div class="change ${s.pos?'pos':'neg'}">${s.change}</div>
+      </div>
+      <div class="score-pill ${sc(s.score)}">${s.score}</div>
+    </div>`
+  ).join('');
+}
+
+function selectStock(ticker){
+  selected = STOCKS.find(s=>s.ticker===ticker);
+  if(!selected) return;
+  const inW = watchlist.includes(ticker);
+  document.getElementById('detail-area').innerHTML = `
+    <div class="detail-card">
+      <div class="detail-head">
+        <div class="detail-ticker">${selected.ticker}</div>
+        <div class="detail-name">${selected.name}</div>
+        <div class="detail-actions">
+          <button class="btn-watch${inW?' active':''}" id="wbtn" onclick="toggleWatch()">${inW?'★ 관심중':'+ 관심종목'}</button>
+          <button class="btn-analyze" id="abtn" onclick="analyzeStock()"><span id="aico">✦</span> AI 분석</button>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="m-label">AI 점수</div><div class="m-value">${selected.score}</div><div class="m-sub">/ 100 · #${selected.rank}위</div></div>
+        <div class="metric"><div class="m-label">주가</div><div class="m-value" style="font-size:16px">${selected.price}</div><div class="m-sub ${selected.pos?'pos':'neg'}">${selected.change}</div></div>
+        <div class="metric"><div class="m-label">PER</div><div class="m-value">${selected.pe}</div><div class="m-sub">주가수익비율</div></div>
+        <div class="metric"><div class="m-label">ROE</div><div class="m-value" style="font-size:16px">${selected.roe}</div><div class="m-sub">자기자본이익률</div></div>
+        <div class="metric"><div class="m-label">시가총액</div><div class="m-value" style="font-size:16px">${selected.cap}</div><div class="m-sub">총 시가총액</div></div>
+        <div class="metric"><div class="m-label">배당</div><div class="m-value" style="font-size:16px">${selected.div}</div><div class="m-sub">연간 배당수익률</div></div>
+      </div>
+      <div class="analysis-box" id="abox"><div class="analysis-placeholder">AI 분석 버튼을 눌러 심층 분석을 받아보세요</div></div>
+      <div class="tags">${selected.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+    </div>`;
+  document.getElementById('detail-area').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+async function analyzeStock(){
+  const btn = document.getElementById('abtn');
+  btn.disabled = true;
+  document.getElementById('aico').outerHTML = '<span class="spinner" id="aico"></span>';
+  document.getElementById('abox').innerHTML = '<div class="analysis-placeholder">분석 중...</div>';
+  try{
+    const r = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:`해외 주식 투자 전문가로서 ${selected.ticker} (${selected.name})를 분석해주세요. 주가:${selected.price} (${selected.change}), PER:${selected.pe}, ROE:${selected.roe}, 시가총액:${selected.cap}, 배당:${selected.div}. 한국어로 간결하게: 1.투자 포인트(<h4>태그) 2.주요 리스크(<h4>태그) 3.종합 의견(<h4>태그). <p>와 <ul><li> 태그 사용.`}]})
+    });
+    const d = await r.json();
+    const txt = d.content?.find(b=>b.type==='text')?.text||'분석 실패';
+    document.getElementById('abox').innerHTML = `<div class="analysis-content">${txt}</div>`;
+  }catch(e){
+    document.getElementById('abox').innerHTML = '<div class="analysis-placeholder">오류가 발생했습니다. 다시 시도해주세요.</div>';
+  }
+  btn.disabled = false;
+  document.getElementById('aico').outerHTML = '<span id="aico">✦</span>';
+}
+
+function toggleWatch(){
+  if(!selected) return;
+  const t = selected.ticker;
+  const i = watchlist.indexOf(t);
+  if(i>-1) watchlist.splice(i,1); else watchlist.push(t);
+  const inW = watchlist.includes(t);
+  const b = document.getElementById('wbtn');
+  b.textContent = inW ? '★ 관심중' : '+ 관심종목';
+  b.className = 'btn-watch'+(inW?' active':'');
+  renderWatchlist();
+}
+
+function renderWatchlist(){
+  const el = document.getElementById('watchlist-area');
+  if(!watchlist.length){
+    el.innerHTML = '<div class="watch-empty">관심 종목이 없습니다.<br>탑 10 탭에서 종목을 추가해보세요.</div>';
+    return;
+  }
+  el.innerHTML = watchlist.map(t=>{
+    const s = STOCKS.find(x=>x.ticker===t);
+    if(!s) return '';
+    return `<div class="watch-item" onclick="switchTab('top10');selectStock('${t}')">
+      <div><div class="w-ticker">${s.ticker} <span class="score-pill ${sc(s.score)}" style="font-size:11px">${s.score}</span></div><div class="w-name">${s.name}</div></div>
+      <div class="w-right">
+        <div class="price">${s.price}</div>
+        <div class="change ${s.pos?'pos':'neg'}">${s.change}</div>
+        <button class="remove-btn" onclick="event.stopPropagation();removeWatch('${t}')">제거</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function doSearch(){
+  const q = document.getElementById('search-input').value.trim();
+  if(!q) return;
+  const r = document.getElementById('search-result');
+  r.innerHTML = '<div style="text-align:center;padding:40px;color:#86868b;font-size:13px;">AI가 분석 중...</div>';
+  try{
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:`해외 주식 투자 전문가로서 "${q}" 종목을 한국어로 분석해주세요. <h4>태그로 섹션 구분: 1.종목 기본정보 2.투자 포인트 3.주요 리스크 4.종합 평가(100점 만점 점수 포함). <p>와 <ul><li> 사용.`}]})
+    });
+    const d = await res.json();
+    const txt = d.content?.find(b=>b.type==='text')?.text||'분석 실패';
+    r.innerHTML = `<div style="margin:12px 16px;background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.08)"><div class="analysis-content">${txt}</div></div>`;
+  }catch(e){
+    r.innerHTML = '<div style="text-align:center;padding:40px;color:#ff3b30;font-size:13px;">오류가 발생했습니다.</div>';
+  }
+}
+
+function setFilter(s){
+  currentSector = s;
+  renderFilters();
+  renderStocks();
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    t.classList.toggle('active',['top10','search','watchlist'][i]===tab);
+  });
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='watchlist') renderWatchlist();
+}
+
+document.getElementById('search-input').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
+
+renderFilters();
+renderStocks();
+renderWatchlist();
+</script>
+</body>
+</html>
